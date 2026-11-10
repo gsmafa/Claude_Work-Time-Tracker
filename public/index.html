@@ -1,1 +1,520 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Учёт рабочего времени</title>
+<style>
+:root{
+  --bg:#eef0f7;--surface:#fff;--ink:#141a33;--muted:#667090;--line:#e1e5f0;
+  --brand:#4338ca;--brand-ink:#fff;--soft:#eceafd;--live:#0b9b72;--live-soft:#dcf5ec;--stop:#d9480f;--err:#c0262d;
+  --shadow:0 1px 2px rgba(20,26,51,.06),0 8px 24px -12px rgba(20,26,51,.18);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1020;--surface:#161a30;--ink:#eceefb;--muted:#9aa3c7;--line:#262c4a;
+  --brand:#8f87ff;--brand-ink:#0d1020;--soft:#232050;--live:#3ddba9;--live-soft:#123a31;--stop:#ff8a4c;--err:#ff8a90;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif}
+.app{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+aside{background:linear-gradient(180deg,#2a1f8f,#4338ca 60%,#5a4cdc);color:#fff;padding:22px 14px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh}
+.brand{display:flex;gap:10px;align-items:center;font-weight:700;font-size:1.05rem;line-height:1.2;padding:0 8px}
+.brand svg{flex:none}
+nav{display:flex;flex-direction:column;gap:4px}
+nav a{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:10px;color:rgba(255,255,255,.78);text-decoration:none;font-weight:600}
+nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+nav a[aria-current=page]{background:rgba(255,255,255,.18);color:#fff}
+nav svg{flex:none}
+.badge{margin-left:auto;background:#3ddba9;color:#06352a;border-radius:999px;font-size:.8rem;padding:0 8px;font-weight:700}
+.lang{display:flex;background:rgba(255,255,255,.16);border-radius:999px;padding:3px;margin-top:auto;align-self:flex-start}
+.lang button{background:none;border:0;color:#fff;padding:5px 14px;border-radius:999px;font:inherit;font-weight:600;cursor:pointer}
+.lang button[aria-pressed=true]{background:#fff;color:#2a1f8f}
+main{padding:32px 28px 56px;max-width:980px;width:100%;margin:0 auto}
+.page[hidden]{display:none}
+h1{margin:0;font-size:1.8rem;letter-spacing:-.02em;line-height:1.2}
+.sub{margin:4px 0 20px;color:var(--muted)}
+.panel{background:var(--surface);border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:var(--shadow)}
+input,button{font:inherit}
+input{padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-width:0;flex:1}
+input:focus{outline:none;border-color:var(--brand);background:var(--surface)}
+.btn{display:inline-block;padding:10px 18px;border:0;border-radius:10px;background:var(--brand);color:var(--brand-ink);font-weight:600;cursor:pointer;text-decoration:none}
+.btn:hover{filter:brightness(1.08)}
+.btn.stop{background:var(--stop);color:#fff}
+button.chip{padding:6px 12px;border:1.5px solid var(--line);border-radius:999px;background:none;color:var(--muted);cursor:pointer}
+button.chip:hover{border-color:var(--brand);color:var(--brand)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+aside :focus-visible{outline-color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.err{color:var(--err);min-height:1.4em;margin:8px 0 0;font-size:.95rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.card.on{border-color:var(--live);background:var(--live-soft)}
+.who{display:flex;gap:12px;align-items:center}
+.ava{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;border:2px solid var(--surface)}
+.on .ava{box-shadow:0 0 0 3px var(--live)}
+.who b{display:block;line-height:1.2}
+.state{font-size:.88rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.on .state{color:var(--live);font-weight:600}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.on .dot{background:var(--live)}
+@media (prefers-reduced-motion:no-preference){.on .dot{animation:p 1.4s ease-in-out infinite}}
+@keyframes p{50%{opacity:.3;transform:scale(.7)}}
+.clock{font-size:2rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--live);line-height:1}
+.task{margin:0;word-break:break-word}
+.card .row{flex-direction:column;align-items:stretch}
+.card .row input{flex:none;width:100%}
+.card .row .btn{width:100%}
+h2{font-size:1.1rem;margin:0 0 14px}
+.sub a{color:var(--brand);font-weight:600;text-decoration:none;margin-left:6px}
+.sub a:hover{text-decoration:underline}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.stat{border-radius:16px;padding:16px 18px;color:#fff;background:linear-gradient(135deg,#12206a,#1b3592);border:1px solid rgba(255,255,255,.14);box-shadow:var(--shadow)}
+.stat-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;color:#a9c4ff;font-size:.92rem}
+.stat-top svg{flex:none;color:#fff}
+.stat b{display:block;font-size:2.2rem;line-height:1.1;margin-top:8px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-bottom:20px}
+.pair .panel{margin:0}
+.psub{margin:-10px 0 14px;color:var(--muted);font-size:.9rem}
+.donut{display:flex;flex-direction:column;align-items:center;gap:14px}
+.donut svg{width:min(240px,100%);height:auto}
+.legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.legend span{display:flex;gap:6px;align-items:center}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.tasks{display:flex;flex-direction:column;gap:12px}
+.trow{display:grid;grid-template-columns:minmax(120px,220px) 1fr 72px;gap:12px;align-items:center}
+.tname{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.tname b,.tname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tname span{font-size:.82rem}
+.tbar{height:14px;border-radius:7px;background:var(--bg);overflow:hidden}
+.tbar i{display:block;height:100%;border-radius:7px}
+.trow .num{text-align:right}
+.gantt{display:flex;flex-direction:column;gap:8px}
+.grow{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center}
+.glabel{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{position:relative;height:30px;border-radius:8px;background-color:var(--bg);background-image:repeating-linear-gradient(to right,var(--line) 0 1px,transparent 1px 25%)}
+.seg{position:absolute;top:4px;bottom:4px;min-width:4px;border-radius:5px;cursor:help}
+.seg.live{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 6px,transparent 6px 12px)}
+.axis{position:relative;height:20px;font-size:.8rem;color:var(--muted)}
+.axis span{position:absolute;white-space:nowrap}
+.list .who{padding:10px 0;border-top:1px solid var(--line)}
+.list .who:first-child{border-top:0}
+.range label{display:flex;gap:8px;align-items:center;color:var(--muted)}
+.range input{flex:none}
+.scroll{overflow-x:auto;margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th{color:var(--muted);font-weight:600;text-align:left;padding:6px 8px}
+td{padding:8px;border-top:1px solid var(--line)}
+.r{text-align:right}.num{font-variant-numeric:tabular-nums;font-weight:600}
+tr.name td{background:var(--soft);border:0;font-weight:700;padding:10px 8px}
+.bar{height:6px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand);border-radius:3px}
+tr.total td{border-top:2px solid var(--ink);font-weight:700;font-size:1.05rem}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1.5px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:12px;align-items:center}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  aside{position:sticky;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;padding:10px 12px;gap:8px 12px;z-index:5}
+  .brand{font-size:.95rem}.lang{margin:0 0 0 auto}
+  nav{order:3;flex-direction:row;width:100%;overflow-x:auto}nav a{padding:8px 12px}
+  main{padding:20px 14px 48px}
+  .grow{grid-template-columns:96px 1fr}.trow{grid-template-columns:1fr 64px}.tbar{grid-column:1/-1;order:3}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <span data-i18n="title"></span>
+  </div>
+  <nav aria-label="Menu">
+    <a href="#overview" data-page="overview">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
+      <span data-i18n="navOverview"></span></a>
+    <a href="#employees" data-page="employees">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>
+      <span data-i18n="navEmployees"></span></a>
+    <a href="#timers" data-page="timers">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>
+      <span data-i18n="navTimers"></span><span class="badge" id="badge" hidden></span></a>
+    <a href="#report" data-page="report">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      <span data-i18n="navReport"></span></a>
+  </nav>
+  <div class="lang" role="group" aria-label="Language"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+</aside>
 
+<main>
+  <section class="page" id="page-overview" hidden>
+    <h1 data-i18n="navOverview"></h1><p class="sub" id="overview-sub"></p>
+    <div class="stats" id="stats"></div>
+    <p class="err perr" role="alert"></p>
+    <div id="overview"></div>
+  </section>
+
+  <section class="page" id="page-timers">
+    <h1 data-i18n="navTimers"></h1><p class="sub" data-i18n="timersSub"></p>
+    <p class="err" id="err-timer" role="alert"></p>
+    <div class="grid" id="cards"></div>
+  </section>
+
+  <section class="page" id="page-employees" hidden>
+    <h1 data-i18n="navEmployees"></h1><p class="sub" data-i18n="employeesSub"></p>
+    <div class="panel">
+      <div class="row">
+        <input id="name" maxlength="80" data-i18n-ph="namePh" data-i18n-aria="namePh">
+        <button class="btn" id="add" data-i18n="add"></button>
+      </div>
+      <p class="err" id="err-emp" role="alert"></p>
+      <div class="list" id="list"></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-report" hidden>
+    <h1 data-i18n="navReport"></h1><p class="sub" data-i18n="reportSub"></p>
+    <div class="panel">
+      <div class="row range">
+        <label><span data-i18n="from"></span><input type="date" class="pfrom"></label>
+        <label><span data-i18n="to"></span><input type="date" class="pto"></label>
+        <button class="btn pshow" data-i18n="show"></button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="chip" data-range="0" data-i18n="today"></button>
+        <button class="chip" data-range="6" data-i18n="week"></button>
+        <button class="chip" data-range="month" data-i18n="month"></button>
+      </div>
+      <p class="err perr" role="alert"></p>
+    </div>
+    <div id="report"></div>
+  </section>
+</main>
+</div>
+
+<script>
+const T = {
+  ru: { title:'Учёт рабочего времени', navTimers:'Таймеры', navEmployees:'Сотрудники', navReport:'Отчёт',
+    timersSub:'Запускайте и останавливайте таймер для каждого сотрудника', employeesSub:'Добавляйте людей в команду',
+    reportSub:'Сколько времени сотрудники отработали за период',
+    namePh:'Имя сотрудника', add:'Добавить сотрудника', noEmps:'Пока никого нет. Сначала добавьте сотрудников.', goEmployees:'Перейти к сотрудникам',
+    taskPh:'Над чем работает', start:'Запустить', stop:'Остановить', idle:'Свободен', working:'Работает',
+    from:'с', to:'по', show:'Показать отчёт', today:'Сегодня', week:'7 дней', month:'Этот месяц',
+    none:'За выбранный период записей нет.', task:'Задача', started:'Начало', time:'Время', total:'Всего', ongoing:'идёт', pick:'Выберите обе даты',
+    name_required:'Укажите имя сотрудника', name_long:'Имя длиннее 80 символов', name_dup:'Сотрудник с таким именем уже есть',
+    emp_not_found:'Сотрудник не найден', task_required:'Опишите задачу', task_long:'Описание длиннее 200 символов',
+    timer_running:'Таймер уже запущен — сначала остановите его', timer_not_running:'Таймер не запущен',
+    bad_period:'Некорректный период', period_order:'Конец периода должен быть позже начала', generic:'Ошибка запроса', chartTasks:'Время по задачам', navOverview:'Обзор', overviewSub:'Сводка по команде за период', changePeriod:'Изменить период', offline:'Нет связи с сервером. Проверьте, что он запущен', statEmployees:'Сотрудников', statTimers:'Активных таймеров', statHours:'Часов за период', statTasks:'Задач за период', chartStatus:'Статус команды', chartStatusSub:'Доступность сотрудников прямо сейчас', chartHours:'Часы по сотрудникам', chartHoursSub:'Отработано за выбранный период', ofWord:'из', chartGantt:'График работы', entries:'Записи' },
+  en: { title:'Time tracker', navTimers:'Timers', navEmployees:'Employees', navReport:'Report',
+    timersSub:'Start and stop a timer for each employee', employeesSub:'Add people to your team',
+    reportSub:'How much time each person logged in a period',
+    namePh:'Employee name', add:'Add employee', noEmps:'Nobody here yet. Add employees first.', goEmployees:'Go to employees',
+    taskPh:'What are they working on', start:'Start', stop:'Stop', idle:'Idle', working:'Working',
+    from:'from', to:'to', show:'Show report', today:'Today', week:'7 days', month:'This month',
+    none:'No entries for the selected period.', task:'Task', started:'Started', time:'Time', total:'Total', ongoing:'running', pick:'Pick both dates',
+    name_required:'Enter the employee name', name_long:'Name is longer than 80 characters', name_dup:'An employee with this name already exists',
+    emp_not_found:'Employee not found', task_required:'Describe the task', task_long:'Description is longer than 200 characters',
+    timer_running:'The timer is already running. Stop it first', timer_not_running:'The timer is not running',
+    bad_period:'Invalid period', period_order:'The end of the period must be after the start', generic:'Request failed', chartTasks:'Time by task', navOverview:'Overview', overviewSub:'Team summary for the period', changePeriod:'Change period', offline:'Cannot reach the server. Check that it is running', statEmployees:'Employees', statTimers:'Active timers', statHours:'Hours in period', statTasks:'Tasks in period', chartStatus:'Team status', chartStatusSub:'Current employee availability', chartHours:'Hours by employee', chartHoursSub:'Worked in the selected period', ofWord:'of', chartGantt:'Work timeline', entries:'Entries' }
+};
+const $ = id => document.getElementById(id);
+let lang = (navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+try { const saved = localStorage.getItem('lang'); if (saved === 'ru' || saved === 'en') lang = saved; } catch {}
+const t = k => T[lang][k] || k;
+let runningCount = 0;
+
+const fmt = ms => { const s = Math.floor(ms/1000);
+  return `${Math.floor(s/3600)}:${String(Math.floor(s/60)%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; };
+const dt = ms => new Date(ms).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-GB', {dateStyle:'short', timeStyle:'short'});
+const day = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const initials = n => n.split(' ').filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
+const hue = n => 235 + [...n].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 55, 0);   // только сине-фиолетовая гамма: не сливается с зелёным «идёт»
+
+class ApiError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+const msg = e => {
+  if (e instanceof ApiError) return T[lang][e.code] || e.message;
+  console.error(e);                    // неожиданная ошибка в коде: видна в консоли браузера (F12)
+  return t('generic');
+};
+async function api(url, body) {
+  let res;
+  try { res = await fetch(url, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : undefined); }
+  catch { throw new ApiError('offline', 'offline'); }   // сервер остановлен или нет сети
+  const data = await res.json().catch(() => { throw new ApiError('generic', 'bad response'); });
+  if (!res.ok) throw new ApiError(data.code, data.error);
+  return data;
+}
+function el(tag, props = {}, ...kids) {   // только textContent: имена и задачи не попадают в разметку как HTML
+  const n = Object.assign(document.createElement(tag), props);
+  n.append(...kids); return n;
+}
+function avatar(name) {
+  const a = el('div', {className:'ava'}, initials(name));
+  a.style.background = `linear-gradient(135deg, hsl(${hue(name)} 62% 42%), hsl(${hue(name) + 28} 68% 58%))`;
+  return a;
+}
+
+// ---- страницы: переключаются внутри одного окна по #адресу, без перезагрузки и новых вкладок
+const PAGES = ['overview', 'employees', 'timers', 'report'];
+const titleKey = { overview:'navOverview', timers:'navTimers', employees:'navEmployees', report:'navReport' };
+const currentPage = () => { const h = location.hash.slice(1); return PAGES.includes(h) ? h : 'overview'; };
+function route() {
+  const p = currentPage();
+  PAGES.forEach(x => { $('page-' + x).hidden = x !== p; });
+  document.querySelectorAll('nav a').forEach(a => {
+    if (a.dataset.page === p) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  document.title = `${t(titleKey[p])} — ${t('title')}`;
+  if (document.querySelector('.pfrom')?.value) setOverviewSub();
+  window.scrollTo(0, 0);
+  if (p === 'overview' || p === 'report') loadPeriod();
+}
+window.addEventListener('hashchange', route);
+
+function applyStatic() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(n => { n.placeholder = t(n.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(n => { n.setAttribute('aria-label', t(n.dataset.i18nAria)); });
+  document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  const badge = $('badge'); badge.textContent = runningCount; badge.hidden = !runningCount;   // data-i18n мог затереть содержимое
+}
+document.querySelectorAll('[data-lang]').forEach(b => { b.onclick = () => {
+  lang = b.dataset.lang;
+  try { localStorage.setItem('lang', lang); } catch {}
+  applyStatic(); route(); loadEmployees();
+}; });
+
+async function loadEmployees() {
+  const employees = await api('/api/employees');
+  runningCount = employees.filter(e => e.running).length;
+  const badge = $('badge'); badge.textContent = runningCount; badge.hidden = !runningCount;
+
+  const cards = $('cards'); cards.replaceChildren();
+  const list = $('list'); list.replaceChildren();
+  if (!employees.length) {
+    cards.append(el('div', {className:'empty', style:'grid-column:1/-1'}, t('noEmps'), el('a', {className:'btn', href:'#employees'}, t('goEmployees'))));
+    return;
+  }
+  for (const e of employees) {
+    list.append(el('div', {className:'who'}, avatar(e.name), el('div', {}, el('b', {}, e.name),
+      el('span', {className:'state' + (e.running ? ' live' : '')}, t(e.running ? 'working' : 'idle')))));
+
+    const card = el('div', {className: 'card' + (e.running ? ' on' : '')},
+      el('div', {className:'who'}, avatar(e.name), el('div', {}, el('b', {}, e.name),
+        el('span', {className:'state'}, el('span', {className:'dot'}), t(e.running ? 'working' : 'idle')))));
+    if (e.running) {
+      const clock = el('div', {className:'clock'}, fmt(Date.now() - e.running.start));
+      clock.dataset.start = e.running.start;
+      card.append(el('p', {className:'task'}, e.running.task), clock,
+        el('button', {className:'btn stop', onclick: () => act('/api/timers/stop', {employeeId:e.id})}, t('stop')));
+    } else {
+      const task = el('input', {placeholder:t('taskPh'), maxLength:200});
+      task.setAttribute('aria-label', t('taskPh') + ': ' + e.name);
+      const go = () => act('/api/timers/start', {employeeId:e.id, task:task.value});
+      task.onkeydown = ev => { if (ev.key === 'Enter') go(); };
+      card.append(el('div', {className:'row'}, task, el('button', {className:'btn', onclick: go}, t('start'))));
+    }
+    cards.append(card);
+  }
+}
+async function act(url, body) {
+  $('err-timer').textContent = '';
+  try { await api(url, body); } catch (e) { $('err-timer').textContent = msg(e); }
+  await loadEmployees();
+}
+setInterval(() => document.querySelectorAll('[data-start]').forEach(n => { n.textContent = fmt(Date.now() - n.dataset.start); }), 1000);
+// отчёт — снимок на момент запроса: пока таймер идёт и отчёт открыт, обновляем его, чтобы идущая запись росла
+setInterval(() => { if (!document.hidden && ['overview', 'report'].includes(currentPage()) && runningCount) loadPeriod(); }, 5000);
+
+$('add').onclick = async () => {
+  $('err-emp').textContent = '';
+  try { await api('/api/employees', {name:$('name').value}); $('name').value = ''; await loadEmployees(); }
+  catch (e) { $('err-emp').textContent = msg(e); }
+};
+$('name').onkeydown = e => { if (e.key === 'Enter') $('add').click(); };
+
+const taskKey = x => x.trim().toLowerCase();
+const taskColor = x => `hsl(${[...taskKey(x)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 11)} 62% 50%)`;
+const loc = () => lang === 'ru' ? 'ru-RU' : 'en-GB';
+const hm = ms => new Date(ms).toLocaleTimeString(loc(), {hour:'2-digit', minute:'2-digit'});
+const panel = (title, ...kids) => {      // второй аргумент-строка — подзаголовок
+  const sub = typeof kids[0] === 'string' ? kids.shift() : null;
+  return el('div', {className:'panel'}, el('h2', {}, title), ...(sub ? [el('p', {className:'psub'}, sub)] : []), ...kids);
+};
+const NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs = {}, ...kids) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  n.append(...kids); return n;
+}
+const hm2 = ms => `${Math.floor(ms / 3600e3)}:${String(Math.floor(ms / 60e3) % 60).padStart(2, '0')}`;
+
+function statusDonut(emps) {           // кто сейчас работает, а кто свободен
+  const working = emps.filter(e => e.running).length;
+  const R = 70, C = 2 * Math.PI * R;
+  const parts = [[working, 'var(--live)', t('working')], [emps.length - working, 'var(--muted)', t('idle')]].filter(x => x[0] > 0);
+  const ring = svg('g', {transform:'rotate(-90 100 100)'});
+  let acc = 0;
+  for (const [n, color] of parts) {
+    const len = n / emps.length * C, gap = parts.length > 1 ? 3 : 0;
+    const c = svg('circle', {cx:100, cy:100, r:R, fill:'none', 'stroke-width':26, 'stroke-dasharray':`${len - gap} ${C - len + gap}`, 'stroke-dashoffset':-acc});
+    c.style.stroke = color; ring.append(c); acc += len;
+  }
+  const big = svg('text', {x:100, y:106, 'text-anchor':'middle', 'font-size':36, 'font-weight':700}, String(working)); big.style.fill = 'var(--ink)';
+  const small = svg('text', {x:100, y:126, 'text-anchor':'middle', 'font-size':12}, `${t('ofWord')} ${emps.length}`); small.style.fill = 'var(--muted)';
+  const legend = el('div', {className:'legend'}, ...parts.map(([n, color, label]) => {
+    const dot = el('i'); dot.style.background = color; return el('span', {}, dot, `${label}: ${n}`);
+  }));
+  return el('div', {className:'donut'}, svg('svg', {viewBox:'0 0 200 200', role:'img', 'aria-label':t('chartStatus')}, ring, big, small), legend);
+}
+
+function hoursChart(emps) {            // отработанные часы по каждому сотруднику за период
+  const W = 460, H = 250, L = 42, Rt = 8, Tp = 16, B = 34, pw = W - L - Rt, ph = H - Tp - B;
+  const maxH = Math.max(0.25, ...emps.map(e => e.totalMs / 3600e3));   // минимум ось 0–0,25 ч, чтобы подписи не дробились на секундах
+  const raw = (maxH || 1) / 4, mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(v => v >= raw);
+  const n = Math.max(1, Math.ceil(maxH / step - 1e-9)), top = n * step;
+  const chart = svg('svg', {viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':t('chartHours')});
+  for (let i = 0; i <= n; i++) {
+    const y = Tp + ph - i / n * ph;
+    const line = svg('line', {x1:L, x2:W - Rt, y1:y, y2:y, 'stroke-dasharray':'3 3'}); line.style.stroke = 'var(--line)';
+    const tickLabel = svg('text', {x:L - 8, y:y + 4, 'text-anchor':'end', 'font-size':11}, String(+(i * step).toFixed(2))); tickLabel.style.fill = 'var(--muted)';
+    chart.append(line, tickLabel);
+  }
+  const slot = pw / emps.length, bw = Math.min(56, slot * 0.68), maxCh = Math.floor(slot / 6.5);
+  emps.forEach((e, i) => {
+    const h = e.totalMs / 3600e3 / top * ph, x = L + slot * i + (slot - bw) / 2, y = Tp + ph - h;
+    const bar = svg('rect', {x, y, width:bw, height:e.totalMs ? Math.max(h, 2) : 0, rx:4}, svg('title', {}, `${e.name}: ${fmt(e.totalMs)}`));
+    bar.style.fill = 'var(--brand)';
+    let label = e.name.length <= maxCh ? e.name : e.name.split(' ')[0];
+    if (label.length > maxCh) label = label.slice(0, Math.max(1, maxCh - 1)) + '…';
+    const name = svg('text', {x:x + bw / 2, y:H - 12, 'text-anchor':'middle', 'font-size':11}, label); name.style.fill = 'var(--ink)';
+    chart.append(bar, name);
+    if (slot >= 44 && e.totalMs) {
+      const val = svg('text', {x:x + bw / 2, y:y - 5, 'text-anchor':'middle', 'font-size':10, 'font-weight':600}, hm2(e.totalMs)); val.style.fill = 'var(--muted)';
+      chart.append(val);
+    }
+  });
+  return chart;
+}
+
+function tasksChart(rows) {            // суммарное время по каждой задаче (одинаковые названия объединяются)
+  const map = new Map();
+  for (const emp of rows) for (const x of emp.entries) {
+    const g = map.get(taskKey(x.task)) || {task:x.task.trim(), ms:0, who:new Set()};
+    g.ms += x.ms; g.who.add(emp.name); map.set(taskKey(x.task), g);
+  }
+  const list = [...map.values()].sort((a, b) => b.ms - a.ms), max = list[0].ms || 1;
+  return el('div', {className:'tasks'}, ...list.map(g => {
+    const fill = el('i'); fill.style.width = Math.max(2, g.ms / max * 100) + '%'; fill.style.backgroundColor = taskColor(g.task);
+    return el('div', {className:'trow'}, el('div', {className:'tname'}, el('b', {}, g.task), el('span', {className:'muted'}, [...g.who].join(', '))),
+      el('div', {className:'tbar'}, fill), el('div', {className:'num'}, fmt(g.ms)));
+  }));
+}
+
+function gantt(r, rows) {              // шкала времени подгоняется под реальные записи, а не под весь период
+  const segs = rows.flatMap(emp => emp.entries.map(x => { const s = Math.max(x.start, r.from); return {emp, x, s, e: s + x.ms}; }));
+  let lo = Math.min(...segs.map(g => g.s)), hi = Math.max(...segs.map(g => g.e));
+  const pad = Math.max((hi - lo) * 0.04, 60000); lo -= pad; hi += pad;
+  if (hi - lo < 600000) hi = lo + 600000;
+  const span = hi - lo, pct = v => (v - lo) / span * 100;
+  const tick = v => span <= 36 * 3600e3 ? hm(v) : new Date(v).toLocaleDateString(loc(), {day:'2-digit', month:'2-digit'});
+  const axis = el('div', {className:'axis'});
+  for (let i = 0; i <= 4; i++) {
+    const l = el('span', {}, tick(lo + span * i / 4)); l.style.left = i * 25 + '%';
+    l.style.transform = i === 0 ? 'none' : i === 4 ? 'translateX(-100%)' : 'translateX(-50%)'; axis.append(l);
+  }
+  const wrap = el('div', {className:'gantt'});
+  for (const emp of rows) {
+    const track = el('div', {className:'track'});
+    for (const g of segs.filter(q => q.emp === emp)) {
+      const bar = el('div', {className:'seg' + (g.x.end === null ? ' live' : ''),
+        title:`${g.x.task}\n${emp.name}\n${dt(g.s)} – ${dt(g.e)} · ${fmt(g.x.ms)}`});
+      bar.style.left = pct(g.s) + '%'; bar.style.width = Math.max(pct(g.e) - pct(g.s), 0.6) + '%'; bar.style.backgroundColor = taskColor(g.x.task);
+      track.append(bar);
+    }
+    wrap.append(el('div', {className:'grow'}, el('div', {className:'glabel'}, emp.name), track));
+  }
+  wrap.append(el('div', {className:'grow'}, el('div'), axis));
+  return wrap;
+}
+
+function setOverviewSub() {
+  const f = document.querySelector('.pfrom').value, tt = document.querySelector('.pto').value;
+  const d = v => new Date(v + 'T00:00:00').toLocaleDateString(loc());
+  $('overview-sub').replaceChildren(f && tt ? `${t('overviewSub')}: ${d(f)} – ${d(tt)}` : t('overviewSub'), el('a', {href:'#report'}, t('changePeriod')));
+}
+const setErr = m => document.querySelectorAll('.perr').forEach(n => { n.textContent = m; });
+const ico = (d, circle) => () => svg('svg', {width:22, height:22, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor', 'stroke-width':2,
+  'stroke-linecap':'round', 'stroke-linejoin':'round', 'aria-hidden':'true'}, ...(circle ? [svg('circle', circle)] : []), svg('path', {d}));
+const ICONS = {
+  statEmployees: ico('M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6', {cx:9, cy:8, r:3.5}),
+  statTimers: ico('M12 9v4l2 2M9 2h6', {cx:12, cy:13, r:8}),
+  statHours: ico('M12 7v5l3 2', {cx:12, cy:12, r:9}),
+  statTasks: ico('M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01') };
+
+function statCards(r, emps) {
+  const tasks = new Set(r.employees.flatMap(e => e.entries.map(x => taskKey(x.task)))).size;
+  const h = r.totalMs / 3600e3;
+  const hours = h.toLocaleString(loc(), {maximumFractionDigits: h < 1 ? 2 : 1});
+  const items = [['statEmployees', emps.length], ['statTimers', emps.filter(e => e.running).length], ['statHours', hours], ['statTasks', tasks]];
+  return items.map(([k, v]) => el('div', {className:'stat'}, el('div', {className:'stat-top'}, el('span', {}, t(k)), ICONS[k]()), el('b', {}, String(v))));
+}
+
+function renderOverview(r, emps) {
+  $('stats').replaceChildren(...statCards(r, emps));
+  const box = $('overview'); box.replaceChildren();
+  const rows = r.employees.filter(x => x.entries.length);
+  if (!rows.length) { box.append(el('div', {className:'panel'}, el('div', {className:'empty'}, t('none')))); return; }
+  box.append(el('div', {className:'pair'}, panel(t('chartStatus'), t('chartStatusSub'), statusDonut(emps)), panel(t('chartHours'), t('chartHoursSub'), hoursChart(r.employees))),
+    panel(t('chartGantt'), gantt(r, rows)), panel(t('chartTasks'), tasksChart(rows)));
+}
+
+function renderReport(r) {
+  const box = $('report'); box.replaceChildren();
+  const rows = r.employees.filter(x => x.entries.length);
+  if (!rows.length) { box.append(el('div', {className:'panel'}, el('div', {className:'empty'}, t('none')))); return; }
+  const tb = el('tbody');
+  for (const emp of rows) {
+    const bar = el('div', {className:'bar'}, el('i'));
+    bar.firstChild.style.width = (r.totalMs ? Math.round(emp.totalMs / r.totalMs * 100) : 0) + '%';
+    tb.append(el('tr', {className:'name'}, el('td', {colSpan:3}, emp.name, bar), el('td', {className:'r num'}, fmt(emp.totalMs))));
+    for (const x of emp.entries)
+      tb.append(el('tr', {}, el('td'), el('td', {}, x.task + (x.end === null ? ` (${t('ongoing')})` : '')),
+        el('td', {}, dt(x.start)), el('td', {className:'r num'}, fmt(x.ms))));
+  }
+  tb.append(el('tr', {className:'total'}, el('td', {colSpan:3}, t('total')), el('td', {className:'r num'}, fmt(r.totalMs))));
+  const table = el('table', {}, el('thead', {}, el('tr', {}, el('th'), el('th', {}, t('task')), el('th', {}, t('started')), el('th', {className:'r'}, t('time')))), tb);
+  box.append(panel(t('entries'), el('div', {className:'scroll'}, table)));
+}
+
+async function loadPeriod() {          // период задаётся в «Отчёте» и общий для «Обзора»: один запрос, два представления
+  setErr(''); setOverviewSub();
+  const f = document.querySelector('.pfrom').value, tt = document.querySelector('.pto').value;
+  if (!f || !tt) { setErr(t('pick')); return; }
+  // границы — полночь по местному времени; «по» включительно, поэтому +1 день
+  const from = new Date(f + 'T00:00:00').getTime();
+  const end = new Date(tt + 'T00:00:00'); end.setDate(end.getDate() + 1);
+  try {
+    const [r, emps] = await Promise.all([api(`/api/report?from=${from}&to=${end.getTime()}`), api('/api/employees')]);
+    renderOverview(r, emps); renderReport(r);
+  } catch (e) { setErr(msg(e)); }
+}
+document.querySelectorAll('.pshow').forEach(b => { b.onclick = loadPeriod; });
+document.querySelectorAll('.pfrom, .pto').forEach(inp => inp.addEventListener('input', () => {   // поля дат на обеих страницах синхронны
+  document.querySelectorAll(inp.classList.contains('pfrom') ? '.pfrom' : '.pto').forEach(o => { o.value = inp.value; });
+}));
+const setRange = v => {
+  const now = new Date();
+  const from = v === 'month' ? new Date(now.getFullYear(), now.getMonth(), 1) : new Date(now.getFullYear(), now.getMonth(), now.getDate() - Number(v));
+  document.querySelectorAll('.pto').forEach(i => { i.value = day(now); });
+  document.querySelectorAll('.pfrom').forEach(i => { i.value = day(from); });
+};
+document.querySelectorAll('[data-range]').forEach(b => { b.onclick = () => { setRange(b.dataset.range); loadPeriod(); }; });
+
+setRange('month');
+applyStatic();
+route();
+loadEmployees();
+</script>
+</body>
+</html>
