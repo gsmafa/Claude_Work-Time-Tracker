@@ -1,126 +1,115 @@
-# Учёт рабочего времени
+# Timetracker
 
-Небольшое веб-приложение: сотрудники, таймер с описанием задачи, отчёт по периоду.
-Стек: **Node.js ≥ 18, без внешних зависимостей** (встроенные `http`, `fs`, `node:test`) + один файл `public/index.html` на чистом JS.
-Все данные в примерах вымышленные.
+A small web app for tracking employee working time: employees, a start/stop timer with a task description,
+and reports for any period. English only. All sample data is fictional.
 
-## Запуск
+Stack: **Node.js >= 18, no external dependencies** (built-in `http`, `fs`, `node:test`) and a single
+`public/index.html` written in plain JavaScript with inline SVG charts.
+
+## Run
 
 ```bash
-npm start            # http://localhost:3000
-PORT=8080 npm start  # другой порт
-DATA_FILE=/путь/db.json npm start   # другое место хранения
-npm test             # проверки
+npm start                            # http://localhost:3000
+PORT=8080 npm start                  # another port
+DATA_FILE=/path/to/db.json npm start # another storage location
+npm test                             # automated checks
 ```
 
-Устанавливать ничего не нужно (`npm install` не требуется). Данные хранятся в `data/db.json` и
-переживают перезапуск, в том числе таймер, который был запущен на момент остановки сервера.
+Nothing needs to be installed (`npm install` is not required). Data is stored in `data/db.json` and survives restarts,
+including a timer that was running when the server stopped.
 
-## Возможности
+## Features
 
-- Добавление сотрудников (пробелы нормализуются, дубликаты без учёта регистра отклоняются).
-- Запуск/остановка таймера с описанием задачи; у одного сотрудника — не более одного активного таймера.
-- Отчёт за период (даты включительно): записи по сотрудникам, итог по каждому и общий итог.
-  Запись, пересекающая границу периода, учитывается только внутри периода; идущий таймер считается до текущего момента.
+- **Overview** (opens first): four summary cards (employees, active timers, hours in period, tasks in period), a
+  "Team status" donut (who is working right now), "Hours by employee" bars, a work timeline (one lane per employee,
+  one coloured segment per task, the running task is striped, hover for details) and "Time by task" (identical task
+  names are merged, case-insensitively). Charts are inline SVG, no libraries.
+- **Employees**: add employees (whitespace is normalized, duplicates are rejected case-insensitively).
+- **Timers**: start and stop a timer with a task description. One active timer per employee.
+- **Report**: pick a period (from/to, plus Today / 7 days / This month) and see entries per employee with totals.
+  The period is shared with Overview, which shows it under its title with a "Change period" link.
+- Sidebar navigation: pages switch inside the same window without reloading (hash URLs such as `#report`, so the
+  browser back/forward buttons and bookmarks work). The Timers item shows a count of running timers. On narrow
+  screens the sidebar becomes a horizontal bar. Content is centered, and light/dark themes follow the system.
+- A period includes both dates. An entry crossing a boundary counts only inside the period; a running timer counts
+  up to the current moment, and the report refreshes every 5 seconds while a timer is running.
 
-## Языки и оформление
+## Structure
 
-- Боковое меню: «Обзор», «Сотрудники», «Таймеры», «Отчёт» (при открытии показывается «Обзор»). Страницы переключаются в этом же окне без
-  перезагрузки и новых вкладок (адрес вида `#report`, поэтому кнопки «назад/вперёд» браузера и закладки работают). У пункта «Таймеры»
-  есть счётчик идущих таймеров. На узком экране меню превращается в горизонтальную полосу сверху. Содержимое правой части выровнено по центру.
-- **«Обзор»**: четыре карточки (сотрудников, активных таймеров, часов за период, задач за период) и под ними диаграммы:
-  **кольцевая «Статус команды»** (сколько сотрудников работают сейчас, не зависит от периода), **столбчатая «Часы по сотрудникам»**,
-  **график работы** (временна́я шкала: у каждого сотрудника отрезки по задачам, цвет зависит от задачи, идущая задача заштрихована,
-  при наведении — подробности; шкала подгоняется под реальные записи) и **время по задачам** (одинаковые названия объединяются
-  без учёта регистра). Диаграммы нарисованы встроенным SVG без библиотек.
-- **«Отчёт»**: выбор периода (с/по и быстрые кнопки) и таблица записей по сотрудникам с итогами. Период задаётся только здесь;
-  «Обзор» использует тот же период, показывает его под заголовком со ссылкой «Изменить период», данные запрашиваются одним запросом.
-- Аватары — круги с инициалами в сине-фиолетовой гамме, чтобы не сливаться с зелёной карточкой работающего сотрудника.
-- Интерфейс на русском и английском: кнопки RU / EN вверху справа. Начальный язык берётся из языка браузера, выбор запоминается.
-- Ошибки API содержат поле `code` (например, `timer_running`), по нему интерфейс показывает сообщение на выбранном языке.
-- Тёмная и светлая тема подстраиваются под систему; в отчёте есть быстрые периоды (сегодня, 7 дней, месяц) и полоса доли времени сотрудника.
-- Чтобы добавить язык, добавьте блок в объект `T` в `public/index.html`.
-
-## Структура
-
-| Файл | Назначение |
+| File | Purpose |
 |---|---|
-| `store.js` | вся логика и хранение (JSON-файл, атомарная запись через временный файл + `rename`) |
-| `server.js` | HTTP-API и отдача страницы |
-| `public/index.html` | интерфейс |
-| `test/app.test.js` | автоматические проверки |
+| `store.js` | all logic and storage (JSON file, atomic write via temp file + `rename`) |
+| `server.js` | HTTP API and the page |
+| `public/index.html` | the interface |
+| `test/app.test.js` | automated checks |
 
-API: `GET/POST /api/employees`, `POST /api/timers/start`, `POST /api/timers/stop`, `GET /api/report?from=<мс>&to=<мс>` (период `[from, to)`).
+API: `GET/POST /api/employees`, `POST /api/timers/start`, `POST /api/timers/stop`,
+`GET /api/report?from=<ms>&to=<ms>` (period `[from, to)`). Errors return `{ error, code }`.
 
-## Проверки (`npm test`, 11 сценариев, все проходят)
+## Tests (`npm test`, 11 scenarios)
 
-Добавление сотрудника (пустое имя, дубликат) · запуск → остановка → длительность в отчёте ·
-**повторный запуск таймера** (409, первая запись не меняется, после остановки запуск снова возможен) ·
-остановка без запуска, пустая задача, неизвестный сотрудник · **пустой отчёт** (нет сотрудников; период без записей) ·
-запись на границе периода и некорректный период · идущий таймер в отчёте · **сохранение после перезапуска** ·
-повреждённый файл данных · полный сценарий через HTTP с кодами ошибок.
-Время в тестах подменяется (`new Store(file, now)`), поэтому длительности проверяются точно, без `sleep`.
-Отдельно вручную проверен перезапуск реального процесса: сотрудник, созданный до остановки сервера, виден после запуска.
+Adding an employee (empty name, duplicate) · start, stop and duration in the report · **starting a timer twice**
+(409, the first entry is untouched, starting again after stopping works) · stop without start, empty task, unknown
+employee · **empty report** (no employees; a period without entries) · boundary entries and invalid periods · a
+running timer in the report · **persistence after restart** · corrupted data file · full HTTP scenario with status
+codes · the home page is served as HTML. Time is injected (`new Store(file, now)`), so durations are asserted exactly
+without sleeping. A real process restart was also checked manually: an employee created before stopping the server
+is still there after starting it again.
 
-## ИИ-инструменты и модели
+The tests run on Node only and cannot see the browser UI. The UI was checked separately in a jsdom emulation
+(outside this repository) with mocked and real-server data, and by looking at screenshots you send back; the AI did
+not look at the rendered page itself.
 
-- **Claude Sonnet 5.5** (Anthropic) в чате claude.ai: проектирование, написание кода, тестов и этого README.
-- Песочница выполнения кода в этом же чате (Node v22): в ней запускались тесты и проверка перезапуска.
-  Других ИИ-инструментов не использовалось. Интерфейс в браузере визуально не проверялся (скриншотов не делалось):
-  проверены API, логика и отдача страницы, поэтому внешний вид стоит быстро просмотреть самому.
+## AI tools and models
 
-### Запросы
+- **Claude Sonnet 5.5** (Anthropic) in claude.ai: design, code, tests and this README.
+- The code-execution sandbox of the same chat (Node v22) ran the tests, the restart check and the jsdom UI checks.
+- No other AI tools were used.
 
-Исходная постановка (дословно по смыслу): «Создай с нуля небольшое веб-приложение для учёта рабочего времени сотрудников.
-Язык и стек выбирай сам. Нужны: добавление сотрудников, таймер с описанием задачи, записи и общее время по периоду,
-сохранение после перезапуска. Авторизация не нужна, данные вымышленные. В README — запуск, ИИ-инструменты, примеры запросов,
-найденные ошибки; добавь проверки, включая повторный запуск таймера и пустой отчёт».
+### Requests used in this project (paraphrased)
 
-Примеры уточняющих запросов, которые имеет смысл задавать в таком проекте (в этой сессии их не было, это шаблоны для продолжения):
+1. "Build a small web app for tracking employee working time from scratch: add employees, a start/stop timer with a task
+   description, entries and total time per employee for a period, persistence across restarts. No auth, fictional data.
+   In the README describe how to run it, the AI tools and models, example prompts, and the bugs you found and fixed. Add
+   checks, including starting a timer twice and an empty report."
+2. "Make it a nicer design, with a sidebar of tabs that open in the same window." 
+3. "Add a work timeline for employees and tasks to the report, plus a donut and a bar chart like this screenshot."
+4. "Move those blocks to a separate first tab called Overview, with stat cards at the top, and center the content."
+5. "Remove the period block from Overview, it already exists in Report."
+6. "Make the whole project English only, no other language and no language switcher."
 
-1. «Что произойдёт, если сервер упадёт во время записи `db.json`? Покажи, как этого избежать».
-2. «Как считать часы за период, если запись началась до его начала? Предложи правило и покажи тест на границу».
-3. «Проверь `public/index.html` на XSS: имена и задачи вводятся пользователем».
+## Bugs found and fixed
 
-## Найденные и исправленные ошибки
+Found by running and testing:
 
-Найдены при запуске и тестировании:
+1. **The `public/` and `test/` folders were not created.** `mkdir -p dir/{public,test}` does not expand braces in
+   `/bin/sh`, so a folder literally named `{public,test}` appeared and writing the files failed. Fixed with `mkdir -p public test`.
+2. **`npm test` failed on Node 22** ("Cannot find module .../test"): `node --test test/` treats the folder as a module.
+   Fixed: the script is `node --test`, which finds `test/*.test.js` itself.
+3. **The test suite hung.** The HTTP test called `srv.close()`, but keep-alive connections from the built-in `fetch`
+   kept the server open. Fixed with `srv.closeAllConnections()` before `close()`.
+4. **The home page opened as `{"type":"Buffer","data":[...]}`.** `index.html` was read as a `Buffer`, and `send()` only
+   passed strings through unchanged and turned everything else into JSON. The tests did not catch it because they only
+   checked the status code. Fixed in `send()`, and a test now checks `Content-Type` and the `<!doctype html>` start.
+5. **Typing in the input fields was impossible.** Handlers like `onkeydown = e => e.key === 'Enter' && ...` return
+   `false` for every other key, and returning `false` from a handler property cancels the keystroke. Fixed with `if`.
+   Verified in jsdom: a keypress was blocked before the fix and is not blocked after.
+6. **The report froze at request time.** A running task showed `0:00:00` while the timer card was already counting,
+   because the running duration is computed by the server at request time and the page never refreshed it. Fixed: the
+   report reloads every 5 seconds while a timer runs and an Overview or Report page is open, and on entering the page.
+7. **"Request failed" explained nothing.** An unreachable server (stopped or restarted while the page was open) and a
+   code error looked the same. Now an unreachable server shows "Cannot reach the server. Check that it is running",
+   and unexpected code errors are printed to the browser console (F12).
 
-1. **Каталоги `public/` и `test/` не создались.** Команда `mkdir -p dir/{public,test}` в `/bin/sh` не раскрывает фигурные скобки:
-   появился каталог с буквальным именем `{public,test}`, а запись `index.html` и тестов завершилась ошибкой «Directory nonexistent».
-   Исправлено: `mkdir -p public test`, файлы записаны заново.
-2. **`npm test` падал на Node 22** («Cannot find module .../test»): `node --test test/` воспринимает каталог как модуль.
-   Исправлено: скрипт `node --test` (сам находит `test/*.test.js`).
-3. **Набор тестов зависал.** HTTP-тест вызывал `srv.close()`, но keep-alive-соединения встроенного `fetch` держали сервер открытым,
-   и процесс тестов не завершался. Исправлено: `srv.closeAllConnections()` перед `close()`.
+Noticed in code review (not confirmed by tests):
 
-4. **Главная страница открывалась как `{"type":"Buffer","data":[...]}`.** `index.html` читался как `Buffer`, а `send()` пропускал без
-   изменений только строки и превращал всё остальное в JSON. Тесты этого не ловили: проверялся только код 200 и API.
-   Исправлено в `send()`, добавлен тест, который проверяет `Content-Type` и что ответ начинается с `<!doctype html>`.
+8. After a server error (for example 409 on a second start) the UI refreshed the employee list but not the report.
+   `act()` now always re-reads the state from the server.
+9. Report periods are half-open `[from, to)` and the date boundaries are computed in the browser in local time (the last
+   day is included by adding one day), which avoids off-by-one-day shifts for users outside UTC and double counting at
+   the seam between periods.
 
-5. **В полях ввода нельзя было печатать.** Обработчик `onkeydown = e => e.key === 'Enter' && ...` для любой клавиши, кроме Enter,
-   возвращал `false`, а возврат `false` из обработчика-свойства отменяет действие клавиши (`preventDefault`). Так были заблокированы
-   поле имени сотрудника и поле задачи. Исправлено на обработчики с `if`. Проверено в jsdom: до исправления нажатие «a» блокировалось,
-   после — нет. Тесты Node этого не видят (нет браузера), поэтому такие вещи нужно проверять в браузере.
+## Limitations
 
-6. **Отчёт «застывал» на моменте запроса.** Идущая задача показывала `0:00:00`, хотя таймер на карточке уже шёл (это заметно на вашем
-   скриншоте): длительность идущей записи считает сервер в момент запроса, а страница отчёта больше не обновлялась.
-   Исправлено: пока открыта страница «Отчёт» и есть идущие таймеры, отчёт перечитывается каждые 5 секунд; при входе на страницу он
-   тоже загружается заново.
-
-7. **Сообщение «Ошибка запроса» не объясняло причину.** На вашем скриншоте оно висело в блоке периода. Причину именно того случая
-   установить не удалось: на настоящем сервере с настоящими записями воспроизвести ошибку не получилось (проверено в jsdom, ошибок скриптов 0).
-   Вероятнее всего, сервер был остановлен или перезапущен при открытой странице. Теперь недоступный сервер даёт понятное сообщение
-   («Нет связи с сервером…»), а неожиданные ошибки в коде выводятся в консоль браузера (F12) для диагностики.
-
-Замечено при ревью кода до запуска (тестами не подтверждалось):
-
-8. В первой версии интерфейса после ошибки сервера (например, 409 при повторном запуске таймера) обновлялся список сотрудников,
-   но не отчёт. Теперь `act()` после любого ответа заново читает состояние с сервера.
-9. Период отчёта задаётся полуинтервалом `[from, to)`, а границы дат считаются в браузере по местному времени (последний день включается
-   добавлением суток). Это исключает сдвиг на день для пользователей вне UTC и двойной учёт записи на стыке периодов.
-
-## Известные ограничения
-
-- Хранилище — один JSON-файл: подходит для небольшой команды и одного процесса сервера; для нескольких серверов нужна БД.
-- Нет редактирования и удаления записей и сотрудников, нет авторизации (по условию задачи).
+- Storage is a single JSON file: fine for a small team and one server process; several servers would need a database.
+- No editing or deleting of entries or employees, and no authentication (by design).

@@ -1,7 +1,7 @@
 {
   "name": "timetracker",
   "version": "1.0.0",
-  "description": "Учёт рабочего времени сотрудников (без зависимостей)",
+  "description": "Employee time tracker (no dependencies)",
   "main": "server.js",
   "scripts": { "start": "node server.js", "test": "node --test" },
   "engines": { "node": ">=18" }

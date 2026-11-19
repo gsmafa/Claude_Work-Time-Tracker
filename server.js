@@ -11,8 +11,8 @@ function createServer(store) {
   };
   const readBody = req => new Promise((resolve, reject) => {
     let raw = '';
-    req.on('data', c => { raw += c; if (raw.length > 10_000) { reject(new AppError(413, 'Слишком большой запрос', 'too_large')); req.destroy(); } });
-    req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new AppError(400, 'Некорректный JSON', 'bad_json')); } });
+    req.on('data', c => { raw += c; if (raw.length > 10_000) { reject(new AppError(413, 'Request is too large', 'too_large')); req.destroy(); } });
+    req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new AppError(400, 'Invalid JSON', 'bad_json')); } });
   });
 
   return http.createServer(async (req, res) => {
@@ -33,11 +33,11 @@ function createServer(store) {
       }
       if (req.method === 'GET' && pathname === '/api/report')
         return send(res, 200, store.report(Number(url.searchParams.get('from')), Number(url.searchParams.get('to'))));
-      throw new AppError(404, 'Не найдено', 'not_found');
+      throw new AppError(404, 'Not found', 'not_found');
     } catch (err) {
       if (err instanceof AppError) return send(res, err.status, { error: err.message, code: err.code });
       console.error(err);
-      send(res, 500, { error: 'Внутренняя ошибка' });
+      send(res, 500, { error: 'Internal error' });
     }
   });
 }
@@ -47,5 +47,5 @@ module.exports = { createServer };
 if (require.main === module) {
   const file = process.env.DATA_FILE || path.join(__dirname, 'data', 'db.json');
   const port = Number(process.env.PORT) || 3000;
-  createServer(new Store(file)).listen(port, () => console.log(`http://localhost:${port}  (данные: ${file})`));
+  createServer(new Store(file)).listen(port, () => console.log(`http://localhost:${port}  (data: ${file})`));
 }

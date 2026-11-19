@@ -8,14 +8,14 @@ class AppError extends Error {
 }
 
 class Store {
-  // now — функция времени; в тестах подменяется, чтобы проверять длительности точно
+  // `now` is a clock function; tests replace it so durations can be asserted exactly
   constructor(file, now = () => Date.now()) {
     this.file = file;
     this.now = now;
     this.data = { employees: [], entries: [] };
     if (fs.existsSync(file)) {
       try { this.data = JSON.parse(fs.readFileSync(file, 'utf8')); }
-      catch { throw new Error(`Файл данных повреждён: ${file}. Исправьте или удалите его.`); }
+      catch { throw new Error(`Data file is corrupted: ${file}. Fix or delete it.`); }
     }
   }
 
@@ -23,12 +23,12 @@ class Store {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     const tmp = this.file + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
-    fs.renameSync(tmp, this.file); // атомарная замена: сбой посреди записи не портит данные
+    fs.renameSync(tmp, this.file); // atomic replace: a crash mid-write cannot corrupt the data
   }
 
   employee(id) {
     const e = this.data.employees.find(x => x.id === id);
-    if (!e) throw new AppError(404, 'Сотрудник не найден', 'emp_not_found');
+    if (!e) throw new AppError(404, 'Employee not found', 'emp_not_found');
     return e;
   }
 
@@ -38,10 +38,10 @@ class Store {
 
   addEmployee(name) {
     name = String(name ?? '').trim().replace(/\s+/g, ' ');
-    if (!name) throw new AppError(400, 'Укажите имя сотрудника', 'name_required');
-    if (name.length > 80) throw new AppError(400, 'Имя длиннее 80 символов', 'name_long');
+    if (!name) throw new AppError(400, 'Enter the employee name', 'name_required');
+    if (name.length > 80) throw new AppError(400, 'Name is longer than 80 characters', 'name_long');
     if (this.data.employees.some(e => e.name.toLowerCase() === name.toLowerCase()))
-      throw new AppError(409, 'Сотрудник с таким именем уже есть', 'name_dup');
+      throw new AppError(409, 'An employee with this name already exists', 'name_dup');
     const e = { id: crypto.randomUUID(), name };
     this.data.employees.push(e);
     this.save();
@@ -55,9 +55,9 @@ class Store {
   startTimer(employeeId, task) {
     this.employee(employeeId);
     task = String(task ?? '').trim();
-    if (!task) throw new AppError(400, 'Опишите задачу', 'task_required');
-    if (task.length > 200) throw new AppError(400, 'Описание длиннее 200 символов', 'task_long');
-    if (this.running(employeeId)) throw new AppError(409, 'Таймер уже запущен — сначала остановите его', 'timer_running');
+    if (!task) throw new AppError(400, 'Describe the task', 'task_required');
+    if (task.length > 200) throw new AppError(400, 'Description is longer than 200 characters', 'task_long');
+    if (this.running(employeeId)) throw new AppError(409, 'The timer is already running. Stop it first', 'timer_running');
     const entry = { id: crypto.randomUUID(), employeeId, task, start: this.now(), end: null };
     this.data.entries.push(entry);
     this.save();
@@ -67,16 +67,16 @@ class Store {
   stopTimer(employeeId) {
     this.employee(employeeId);
     const entry = this.running(employeeId);
-    if (!entry) throw new AppError(409, 'Таймер не запущен', 'timer_not_running');
+    if (!entry) throw new AppError(409, 'The timer is not running', 'timer_not_running');
     entry.end = Math.max(this.now(), entry.start);
     this.save();
     return entry;
   }
 
-  // Период [from, to) в миллисекундах. Запись, пересекающая границу, учитывается частично.
+  // Period is [from, to) in milliseconds. An entry crossing a boundary counts only inside the period.
   report(from, to) {
-    if (!Number.isFinite(from) || !Number.isFinite(to)) throw new AppError(400, 'Некорректный период', 'bad_period');
-    if (to <= from) throw new AppError(400, 'Конец периода должен быть позже начала', 'period_order');
+    if (!Number.isFinite(from) || !Number.isFinite(to)) throw new AppError(400, 'Invalid period', 'bad_period');
+    if (to <= from) throw new AppError(400, 'The end of the period must be after the start', 'period_order');
     const now = this.now();
     const rows = this.data.employees.map(emp => {
       const entries = [];
