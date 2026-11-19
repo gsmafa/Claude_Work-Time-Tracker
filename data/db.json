@@ -1,17 +1,50 @@
 {
   "employees": [
     {
-      "id": "c8ddde4c-f2c8-4f01-b32a-69c33ab967b4",
-      "name": "Инна Соколова"
+      "id": "2e88e427-9126-4039-aeff-3daa8bdabc0b",
+      "name": "Alex Murfy"
+    },
+    {
+      "id": "e7055a6c-2e14-4705-8eaf-0b9dbbe82761",
+      "name": "Jhon Marshall"
+    },
+    {
+      "id": "585953ed-7678-4311-b964-04c296343963",
+      "name": "Anisa Davenport"
+    },
+    {
+      "id": "0f918766-df4c-46eb-b62b-0510f953800a",
+      "name": "Fiona Hicks"
     }
   ],
   "entries": [
     {
-      "id": "f7ca3c5d-8957-4563-999f-0a4717af4ec4",
-      "employeeId": "c8ddde4c-f2c8-4f01-b32a-69c33ab967b4",
-      "task": "Подготовка коммерческого предложения",
-      "start": 1794300426329,
-      "end": 1794300514305
+      "id": "71d7b205-bdce-4d0a-a4b1-af380232e6d9",
+      "employeeId": "2e88e427-9126-4039-aeff-3daa8bdabc0b",
+      "task": "Development of the main page of the website",
+      "start": 1795088923581,
+      "end": null
+    },
+    {
+      "id": "b24a5fb5-d7b8-459d-a00c-554a0a321c0b",
+      "employeeId": "e7055a6c-2e14-4705-8eaf-0b9dbbe82761",
+      "task": "Checking and correcting errors on the website",
+      "start": 1795091478279,
+      "end": null
+    },
+    {
+      "id": "320fd6df-8e2e-43d5-85cb-fec53dd5e327",
+      "employeeId": "585953ed-7678-4311-b964-04c296343963",
+      "task": "Preparation of the weekly report",
+      "start": 1795092085873,
+      "end": null
+    },
+    {
+      "id": "dcc3cb8c-400f-4467-ae4f-b55b2638b0c6",
+      "employeeId": "0f918766-df4c-46eb-b62b-0510f953800a",
+      "task": "Working with email",
+      "start": 1795092176507,
+      "end": null
     }
   ]
 }
